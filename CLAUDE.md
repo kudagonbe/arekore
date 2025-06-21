@@ -56,3 +56,9 @@ The documented configurations cover:
 - Always include installation prerequisites and dependency information
 - Maintain the established Japanese documentation format
 - Include command examples with proper syntax highlighting
+
+### Repository Maintenance
+- When making changes to the repository structure or adding new tools/configurations, update this CLAUDE.md file accordingly
+- Keep the Repository Structure section current with any new files or directories
+- Update the Development Environment Stack section when new tools are documented
+- Maintain consistency between the actual repository state and the documentation in CLAUDE.md
