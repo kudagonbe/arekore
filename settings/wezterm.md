@@ -147,3 +147,6 @@ return config
 2. WezTermをインストール（[公式サイト](https://wezfurlong.org/wezterm/)からダウンロード）
 3. Nerd Fonts対応フォントをインストール（タブアイコン表示のため）
 4. 設定は自動で反映されます（`automatically_reload_config = true`のため）
+
+---
+**最終更新日時**: 2025-06-21
