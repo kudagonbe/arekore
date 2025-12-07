@@ -62,6 +62,7 @@ brew install zsh-git-prompt
 - `pc` → `pet search | pbcopy`
 - `c` → `container`
 - `vim` → `nvim`
+- `gfp` → `git fetch --prune`
 
 ### カスタム関数
 - `prev()`: 直前のコマンドをpetに保存
@@ -144,6 +145,7 @@ bindkey '^s' pet-select
 alias pc='pet search | pbcopy'
 alias c='container'
 alias vim='nvim'
+alias gfp='git fetch --prune'
 ```
 
 ### 移行手順
@@ -165,4 +167,4 @@ alias vim='nvim'
 4. 各ツールが正常に動作することを確認（上記インストール確認コマンド参照）
 
 ---
-**最終更新日時**: 2025-06-21
+**最終更新日時**: 2025-12-07
