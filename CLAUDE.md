@@ -10,6 +10,9 @@ This is a personal configuration documentation repository (`arekore`) that conta
 
 ```
 arekore/
+├── bin/                # Personal commands (add this directory to PATH)
+│   ├── README.md      # Setup and command reference
+│   └── cmux-setup     # Creates a cmux workspace (Claude Code / yazi / lazygit / terminal)
 ├── settings/           # Configuration documentation
 │   ├── nvim.md        # Neovim configuration summary
 │   ├── wezterm.md     # WezTerm terminal configuration summary  
@@ -43,6 +46,10 @@ The documented configurations cover:
 - New configuration documentation should follow the existing naming pattern: `[tool].md`
 - Place configuration summaries in the `settings/` directory
 - Maintain Japanese language consistency across all documentation
+
+### Commands in bin/
+- Write commands in bash, keep them executable (`chmod +x`), and include a `--help` usage header in Japanese
+- Document each command in `bin/README.md`
 
 ### Documentation Style
 - Include configuration file locations (absolute paths)

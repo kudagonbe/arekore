@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+#
+# cmux-setup - 開発用レイアウトの cmux ワークスペースを新規作成する
+#
+# 使い方:
+#   cmux-setup            # カレントディレクトリで作業する
+#   cmux-setup <name>     # worktree (<repo>/.claude/worktrees/<name>) を作って作業する
+#
+# レイアウト:
+#   ┌──────────────┬──────────────┐
+#   │              │ yazi|lazygit │  右上: 1つのペインに yazi / lazygit の2サーフェス
+#   │ Claude Code  │              │
+#   │              ├──────────────┤
+#   │              │ terminal     │  右下: コマンド実行用ターミナル
+#   └──────────────┴──────────────┘
+#
+# 依存: cmux, claude, yazi, lazygit, jq, git (worktree 利用時)
+
+set -euo pipefail
+
+export CMUX_QUIET=1
+
+LEFT_RATIO=0.5       # 左 Claude Code : 右
+RIGHT_TOP_RATIO=0.6  # 右上 yazi/lazygit : 右下 terminal
+WS_PREFIX="⚡"        # ワークスペース名の接頭辞
+
+die() {
+  echo "cmux-setup: $*" >&2
+  exit 1
+}
+
+usage() {
+  sed -n '3,17p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+case "${1:-}" in
+  -h|--help) usage; exit 0 ;;
+esac
+[ $# -le 1 ] || { usage >&2; exit 1; }
+
+worktree_name="${1:-}"
+
+[ -n "${CMUX_WORKSPACE_ID:-}" ] || die "cmux のターミナル内で実行してください"
+for cmd in cmux claude yazi lazygit jq; do
+  command -v "$cmd" >/dev/null 2>&1 || die "$cmd が見つかりません"
+done
+cmux identify >/dev/null 2>&1 || die "cmux に接続できません"
+
+work_dir="$PWD"
+ws_name="$(basename "$PWD")"
+
+# --- worktree --------------------------------------------------------------
+# 全ペインを最初から worktree で起動できるよう、ワークスペース作成前に作っておく
+if [ -n "$worktree_name" ]; then
+  command -v git >/dev/null 2>&1 || die "git が見つかりません"
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
+    || die "worktree を作るには git リポジトリ内で実行してください"
+  # worktree 内から実行してもメインのリポジトリを基準にする
+  repo_root="$(dirname "$common_dir")"
+  work_dir="$repo_root/.claude/worktrees/$worktree_name"
+  ws_name="$(basename "$repo_root") ($worktree_name)"
+
+  if git -C "$work_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "既存の worktree を使います: $work_dir"
+  elif git -C "$repo_root" show-ref --verify --quiet "refs/heads/$worktree_name"; then
+    git -C "$repo_root" worktree add "$work_dir" "$worktree_name"
+  else
+    git -C "$repo_root" worktree add -b "$worktree_name" "$work_dir"
+  fi
+
+  # メインのリポジトリで worktree が未追跡ファイルとして見えないようにする
+  exclude_file="$common_dir/info/exclude"
+  if ! grep -qxF '.claude/worktrees/' "$exclude_file" 2>/dev/null; then
+    mkdir -p "$(dirname "$exclude_file")"
+    echo '.claude/worktrees/' >>"$exclude_file"
+  fi
+fi
+
+# --- ワークスペース作成 ----------------------------------------------------
+layout="$(jq -cn --argjson left "$LEFT_RATIO" --argjson top "$RIGHT_TOP_RATIO" '{
+  direction: "horizontal",
+  split: $left,
+  children: [
+    {pane: {surfaces: [{type: "terminal", command: "claude"}]}},
+    {
+      direction: "vertical",
+      split: $top,
+      children: [
+        {pane: {surfaces: [
+          {type: "terminal", command: "yazi"},
+          {type: "terminal", command: "lazygit"}
+        ]}},
+        {pane: {surfaces: [{type: "terminal"}]}}
+      ]
+    }
+  ]
+}')"
+
+workspace="$(cmux new-workspace --name "$WS_PREFIX$ws_name" --cwd "$work_dir" --layout "$layout" --focus true \
+  | awk '{print $2}')"
+
+# 右上は最後のサーフェス (lazygit) が選択された状態になるので yazi に切り替え、
+# 最後に Claude Code のペインへフォーカスを戻す
+panes_json="$(cmux list-panes --workspace "$workspace" --json)"
+claude_pane="$(jq -r '.panes[0].ref' <<<"$panes_json")"
+yazi_surface="$(jq -r '.panes[1].surface_refs[0]' <<<"$panes_json")"
+cmux focus-panel --workspace "$workspace" --panel "$yazi_surface" >/dev/null
+cmux focus-pane --workspace "$workspace" --pane "$claude_pane" >/dev/null
