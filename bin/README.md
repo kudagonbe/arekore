@@ -32,6 +32,7 @@ cmux-setup --cleanup <name>  # worktree とブランチを確認のうえ削除�
 ```
 
 - 左右の比率は 5:5
+- Claude Code を終了するとワークスペースを閉じる
 - ワークスペース名: 引数なしは `⚡<フォルダ名>`、引数ありは `⚡<リポジトリ名> (<name>)`
 - 引数ありの場合
   - `<repo>/.claude/worktrees/<name>` に worktree を作成し、全ペインをそこで起動する

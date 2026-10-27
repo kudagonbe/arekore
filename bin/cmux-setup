@@ -106,7 +106,8 @@ cmux identify >/dev/null 2>&1 || die "cmux に接続できません"
 
 work_dir="$PWD"
 ws_name="$(basename "$PWD")"
-claude_cmd="claude"
+# Claude Code の終了後にワークスペースを閉じる ($CMUX_WORKSPACE_ID は起動先のペインで展開される)
+claude_cmd='claude; cmux close-workspace --workspace "$CMUX_WORKSPACE_ID" --force >/dev/null'
 
 # --- worktree --------------------------------------------------------------
 # 全ペインを最初から worktree で起動できるよう、ワークスペース作成前に作っておく
@@ -134,7 +135,7 @@ if [ -n "$worktree_name" ]; then
     echo '.claude/worktrees/' >>"$exclude_file"
   fi
 
-  # Claude Code の終了後に worktree を削除するか確認する
+  # Claude Code の終了後に worktree を削除するか確認してからワークスペースを閉じる
   self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
   claude_cmd="claude; $(printf '%q --cleanup %q' "$self" "$worktree_name")"
 fi
