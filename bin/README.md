@@ -41,5 +41,5 @@ cmux-setup --cleanup <name>  # worktree とブランチを確認のうえ削除�
   - Claude Code を終了すると、worktree とブランチを削除するか確認する
     - 未コミットの変更や他のブランチにないコミットがあれば一覧を出し、既定は「残す」(`[y/N]`)
     - 変更が無ければ既定は「削除」(`[Y/n]`)
-    - 削除するとワークスペースも閉じる。残した場合は後から `cmux-setup --cleanup <name>` で削除できる
+    - 削除してもしなくてもワークスペースは閉じる。残した worktree は後から `cmux-setup --cleanup <name>` で削除できる
 - 依存: `cmux` `claude` `yazi` `lazygit` `jq` `git`

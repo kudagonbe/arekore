@@ -6,7 +6,7 @@
 #   cmux-setup            # カレントディレクトリで作業する
 #   cmux-setup <name>     # worktree (<repo>/.claude/worktrees/<name>) を作って作業する
 #   cmux-setup --cleanup <name>
-#                         # worktree とブランチ <name> を確認のうえ削除する
+#                         # worktree とブランチ <name> を確認のうえ削除し、ワークスペースを閉じる
 #                         # (worktree 利用時は Claude Code 終了後に自動で実行される)
 #
 # レイアウト:
@@ -72,13 +72,14 @@ cleanup() {
     read -r -p "worktree とブランチ $name を削除しますか? (上記は失われます) [y/N] " ans || ans=n
   fi
   case "${ans:-$default}" in
-    [yY]*) ;;
-    *) echo "worktree を残しました"; return 0 ;;
+    [yY]*)
+      cd "$repo_root"
+      git worktree remove --force "$work_dir"
+      git branch -D "$name"
+      ;;
+    *) echo "worktree を残しました" ;;
   esac
 
-  cd "$repo_root"
-  git worktree remove --force "$work_dir"
-  git branch -D "$name"
   if $in_worktree; then
     # yazi / lazygit などが動いたままなので --force で閉じる
     cmux close-workspace --workspace "$CMUX_WORKSPACE_ID" --force >/dev/null
