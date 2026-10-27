@@ -149,4 +149,4 @@ return config
 4. 設定は自動で反映されます（`automatically_reload_config = true`のため）
 
 ---
-**最終更新日時**: 2025-12-07
+**最終更新日時**: 2026-10-27
