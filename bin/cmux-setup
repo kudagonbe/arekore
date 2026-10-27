@@ -5,6 +5,9 @@
 # 使い方:
 #   cmux-setup            # カレントディレクトリで作業する
 #   cmux-setup <name>     # worktree (<repo>/.claude/worktrees/<name>) を作って作業する
+#   cmux-setup --cleanup <name>
+#                         # worktree とブランチ <name> を確認のうえ削除する
+#                         # (worktree 利用時は Claude Code 終了後に自動で実行される)
 #
 # レイアウト:
 #   ┌──────────────┬──────────────┐
@@ -30,11 +33,65 @@ die() {
 }
 
 usage() {
-  sed -n '3,17p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,20p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# 引数で受けた worktree を確認のうえ削除し、そのワークスペースを閉じる
+cleanup() {
+  local name="$1"
+  local common_dir repo_root work_dir changes commits default ans
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" \
+    || die "git リポジトリ内で実行してください"
+  repo_root="$(dirname "$common_dir")"
+  work_dir="$repo_root/.claude/worktrees/$name"
+  [ -d "$work_dir" ] || die "worktree がありません: $work_dir"
+
+  # worktree のワークスペース内から実行されたときだけ、最後にワークスペースを閉じる
+  local in_worktree=false
+  case "$PWD/" in "$work_dir"/*) in_worktree=true ;; esac
+
+  changes="$(git -C "$work_dir" status --short)"
+  # 他のブランチ・リモートのどこにも含まれないコミット (削除すると失われるもの)
+  commits="$(git -C "$work_dir" log --oneline HEAD --not --exclude="$name" --branches --remotes)"
+
+  echo
+  echo "worktree: $work_dir"
+  if [ -n "$changes" ] || [ -n "$commits" ]; then
+    [ -z "$changes" ] || printf '\n未コミットの変更:\n%s\n' "$changes"
+    [ -z "$commits" ] || printf '\n他のブランチにないコミット:\n%s\n' "$commits"
+    default=n
+  else
+    echo "変更はありません"
+    default=y
+  fi
+  echo
+
+  if [ "$default" = y ]; then
+    read -r -p "worktree とブランチ $name を削除しますか? [Y/n] " ans || ans=n
+  else
+    read -r -p "worktree とブランチ $name を削除しますか? (上記は失われます) [y/N] " ans || ans=n
+  fi
+  case "${ans:-$default}" in
+    [yY]*) ;;
+    *) echo "worktree を残しました"; return 0 ;;
+  esac
+
+  cd "$repo_root"
+  git worktree remove --force "$work_dir"
+  git branch -D "$name"
+  if $in_worktree; then
+    # yazi / lazygit などが動いたままなので --force で閉じる
+    cmux close-workspace --workspace "$CMUX_WORKSPACE_ID" --force >/dev/null
+  fi
 }
 
 case "${1:-}" in
   -h|--help) usage; exit 0 ;;
+  --cleanup)
+    [ $# -eq 2 ] || { usage >&2; exit 1; }
+    cleanup "$2"
+    exit 0
+    ;;
 esac
 [ $# -le 1 ] || { usage >&2; exit 1; }
 
@@ -48,6 +105,7 @@ cmux identify >/dev/null 2>&1 || die "cmux に接続できません"
 
 work_dir="$PWD"
 ws_name="$(basename "$PWD")"
+claude_cmd="claude"
 
 # --- worktree --------------------------------------------------------------
 # 全ペインを最初から worktree で起動できるよう、ワークスペース作成前に作っておく
@@ -74,14 +132,18 @@ if [ -n "$worktree_name" ]; then
     mkdir -p "$(dirname "$exclude_file")"
     echo '.claude/worktrees/' >>"$exclude_file"
   fi
+
+  # Claude Code の終了後に worktree を削除するか確認する
+  self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+  claude_cmd="claude; $(printf '%q --cleanup %q' "$self" "$worktree_name")"
 fi
 
 # --- ワークスペース作成 ----------------------------------------------------
-layout="$(jq -cn --argjson left "$LEFT_RATIO" --argjson top "$RIGHT_TOP_RATIO" '{
+layout="$(jq -cn --argjson left "$LEFT_RATIO" --argjson top "$RIGHT_TOP_RATIO" --arg claude "$claude_cmd" '{
   direction: "horizontal",
   split: $left,
   children: [
-    {pane: {surfaces: [{type: "terminal", command: "claude"}]}},
+    {pane: {surfaces: [{type: "terminal", command: $claude}]}},
     {
       direction: "vertical",
       split: $top,

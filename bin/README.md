@@ -19,6 +19,7 @@ export PATH="$HOME/projects/github/kudagonbe/arekore/bin:$PATH"
 ```zsh
 cmux-setup            # カレントディレクトリで作業する
 cmux-setup <name>     # worktree を作って作業する
+cmux-setup --cleanup <name>  # worktree とブランチを確認のうえ削除する
 ```
 
 ```
@@ -37,4 +38,8 @@ cmux-setup <name>     # worktree を作って作業する
   - ブランチ `<name>` が無ければ現在の HEAD から作成、あればそのブランチを使う
   - worktree が既にあれば再利用する
   - `.claude/worktrees/` を `.git/info/exclude` に追加する
+  - Claude Code を終了すると、worktree とブランチを削除するか確認する
+    - 未コミットの変更や他のブランチにないコミットがあれば一覧を出し、既定は「残す」(`[y/N]`)
+    - 変更が無ければ既定は「削除」(`[Y/n]`)
+    - 削除するとワークスペースも閉じる。残した場合は後から `cmux-setup --cleanup <name>` で削除できる
 - 依存: `cmux` `claude` `yazi` `lazygit` `jq` `git`
